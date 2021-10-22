@@ -13,6 +13,15 @@ intents.members = True
 
 queues = []
 
+ydl_opts = {
+    'format': 'bestaudio/best',
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '192',
+    }],
+}
+
 def check_queue(ctx):
     if queues:
         voice = ctx.guild.voice_client
@@ -27,8 +36,7 @@ async def on_ready():
 async def hello(ctx):
     await ctx.send("Hello!")
 
-@client.command(pass_context = True)
-async def play(ctx, arg):
+async def play(ctx, *, arg):
 
     voice = ctx.guild.voice_client
 
@@ -43,28 +51,37 @@ async def play(ctx, arg):
         else:
             await ctx.send("You are not in a voice channel!")
 
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
-    }
-
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         if validators.url(arg):
             info = ydl.extract_info(arg, download=False)
         else:
             info = ydl.extract_info(f"ytsearch:{arg}", download=False)['entries'][0]
-        url = info['formats'][0]['url']
-        source = FFmpegPCMAudio(url)
-        
-        try:
-            player = voice.play(source, after=lambda x=None: check_queue(ctx))
-        except:
-            queues.append(source)
-            await ctx.send("Added to queue!")
+        if 'entries' in info:
+            j = True
+            for i in info['entries']:
+                if j:
+                    j = False
+                    url = i['formats'][0]['url']
+                    source = FFmpegPCMAudio(url)
+    
+                    try:
+                        player = voice.play(source, after=lambda x=None: check_queue(ctx))
+                    except:
+                        queues.append(source)
+                        await ctx.send("Added to queue!")
+                else:
+                    url = i['formats'][0]['url']
+                    source = FFmpegPCMAudio(url)
+                    queues.append(source)
+        else:
+            url = info['formats'][0]['url']
+            source = FFmpegPCMAudio(url)
+            
+            try:
+                player = voice.play(source, after=lambda x=None: check_queue(ctx))
+            except:
+                queues.append(source)
+                await ctx.send("Added to queue!")
 
 @client.command(pass_context = True)
 async def pause(ctx):
@@ -91,6 +108,8 @@ async def skip(ctx):
 @client.command(pass_context = True)
 async def leave(ctx):
     if(ctx.voice_client):
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            ydl.cache.remove()
         queues.clear()
         await ctx.guild.voice_client.disconnect()
     else:
