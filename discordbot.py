@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
 import discord
-from discord import player
-from discord import guild
+import validators
+import youtube_dl
 from discord.ext import commands
 from discord import FFmpegPCMAudio
-import youtube_dl
 
 client = commands.Bot(command_prefix="?")
 
@@ -18,7 +17,7 @@ def check_queue(ctx):
     if queues:
         voice = ctx.guild.voice_client
         source = queues.pop(0)
-        player = voice.play(source)
+        player = voice.play(source, after=lambda x=None: check_queue(ctx))
 
 @client.event
 async def on_ready():
@@ -54,7 +53,10 @@ async def play(ctx, arg):
     }
 
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(arg, download=False)
+        if validators.url(arg):
+            info = ydl.extract_info(arg, download=False)
+        else:
+            info = ydl.extract_info(f"ytsearch:{arg}", download=False)['entries'][0]
         url = info['formats'][0]['url']
         source = FFmpegPCMAudio(url)
         
