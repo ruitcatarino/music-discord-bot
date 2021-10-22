@@ -1,7 +1,9 @@
 # Simple Youtube Music Discord Bot
 
 Simple Music Discord Bot, with the help of youtube-dl.
+
 Plays YouTube links and allows the search by name
+
 Does not support YouTube playlists nor Spotify links.
 
 ## Commands
